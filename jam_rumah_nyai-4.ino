@@ -1,7 +1,7 @@
 
 
 //SETUP DMD
-#define DISPLAYS_WIDE 2
+#define DISPLAYS_WIDE 1
 #define DISPLAYS_HIGH 1
 
 
@@ -24,7 +24,7 @@ char password[20] = "00000000";
 
 //pengaturan wifi untuk upload program
 const char* idwifi = "KELUARGA02";
-const char* passwifi = "suhartono";
+const char* passwifi = "khusnul23";
 const char* host = "JAM_PANEL";
 
 //ESP8266WebServer server(80);
@@ -89,7 +89,7 @@ uint8_t    sholatNow     = -1;
 bool       reset_x       = 0; 
 
 /*======library tambahan=======*/
-//bool       flagAnim = false;
+bool       flagAnim = false;
 uint8_t    speedDate      = 40; // Kecepatan default date
 uint8_t    speedText1     = 40; // Kecepatan default text  
 uint8_t    speedText2     = 40;
@@ -106,8 +106,10 @@ uint8_t    counterName     = 0;
 
 enum Show{
   ANIM_CLOCK_BIG,
+  ANIM_JAM,
   ANIM_DATE,
   ANIM_NAME,
+  ANIM_TEXT,
   ANIM_TEXT1,
   ANIM_TEXT2,
   ANIM_SHOLAT,
@@ -117,7 +119,7 @@ enum Show{
   UPLOAD
 };
 
-Show show = ANIM_CLOCK_BIG;
+Show show = ANIM_JAM;
 
 
 #define EEPROM_SIZE 512
@@ -499,7 +501,7 @@ void setup() {
   }else{
     Disp_init_esp();
     Serial.println("PANEL_OK");
-    //stateSendSholat = true;
+    stateSendSholat = true;
   }
  
   delay(1000);
@@ -537,46 +539,28 @@ void loop() {
  
 
  switch(show){
-  case ANIM_CLOCK_BIG :
-    anim_JG();
-  break;
+    case ANIM_JAM :
+      runAnimasiJam();
+      drawDate();
+    break;
 
-  case ANIM_DATE :
-    drawDate();
-  break;
+    case ANIM_TEXT :
+      runAnimasiJam();
+      runningTextInfo();
+    break;
 
-  case ANIM_NAME :
-    (counterName==0)?drawName():scrollText();
-  break;
+    case ANIM_SHOLAT :
+       animasiJadwalSholat();
+    break;
 
-  case ANIM_TEXT1:
-    drawText1();
-  break;
+    case ANIM_ADZAN :
+      drawAzzan();
+    break;
 
-  case ANIM_TEXT2 :
-    drawText2();
-  break;
-
-  case ANIM_SHOLAT :
-    drawJadwalSholat();
-  break;
-  
-  case ANIM_ADZAN :
-    drawAzzan();
-  break;
-
-  case ANIM_IQOMAH :
-    drawIqomah();
-  break;
-
-  case ANIM_BLINK :
-    blinkBlock();
-  break;
-
-  case UPLOAD :
-    buzzerUpload();
-  break;
- };
+    case UPLOAD :
+      buzzerUpload();
+    break;
+  };
   
   buzzerWarning(stateBuzzWar);
   yield();

@@ -13,7 +13,7 @@ char ssid[20]     = "JAM_PANEL";
 char password[20] = "00000000";
 
 const char* otaSsid = "KELUARGA02";
-const char* otaPass = "suhartono";
+const char* otaPass = "khusnul23";
 const char* otaHost = "SERVER";
 
 ESP8266WebServer server(80);
