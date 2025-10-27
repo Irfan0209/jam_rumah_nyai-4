@@ -59,7 +59,7 @@ void drawDate(){
 
   
   if (fullScroll == 0) { // Hitung hanya sekali
-    fullScroll = Disp.textWidth(buff_date) + Disp.width() ;
+    fullScroll = Disp.textWidth(buff_date) + Disp.width() + 20;
   }
 
  if (Tmr - lsRn > Speed) { 
@@ -170,7 +170,7 @@ void animasiJadwalSholat(){
     if(s==1 and x<33){lsRn=Tmr; x++; }
   }
 
-  if((Tmr-lsRn)>4000 and y == 9) {s1=1; s=1;}
+  if((Tmr-lsRn)>1000 and y == 9) {s1=1; s=1;} //4 detik
 
   if (x == 33 and s==1 and s1 == 1) { 
     s=0;

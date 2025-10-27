@@ -770,8 +770,8 @@ void loadFromEEPROM() {
     text1[i] = EEPROM.read(ADDR_TEXT1 + i);
     if (text1[i] == 0) break;
   }
-//  Serial.print("Text1: ");
-//  Serial.println(text1);
+  Serial.print("Text1: ");
+  Serial.println(text1);
   
   for (int i = 0; i < 100; i++) {
     text2[i] = EEPROM.read(ADDR_TEXT2 + i);
