@@ -5,16 +5,15 @@
 #include <ESP_EEPROM.h>
 #include <ArduinoOTA.h>
 
-#define EEPROM_SIZE 512
+#define EEPROM_SIZE 100
 #define ADDR_MODE        0
-#define ADDR_PASSWORD    2
 
 char ssid[20]     = "JAM_PANEL";
 char password[20] = "00000000";
 
 const char* otaSsid = "KELUARGA02";
 const char* otaPass = "khusnul23";
-const char* otaHost = "SERVER";
+const char* otaHost = "SERVER_5";
 
 ESP8266WebServer server(80);
 WebSocketsServer webSocket(81);
@@ -176,7 +175,7 @@ void handleSetTime() {
   }
   if (server.hasArg("CoHi")) {
     data = server.arg("CoHi"); // Atur latitude    data = "CoHi=" + data;
-
+    data = "CoHi=" + data;
     //Serial.println(data);
     getData(data);
     server.send(200, "text/plain", "OK");//"coreksi hijriah diupdate");
@@ -191,13 +190,14 @@ void handleSetTime() {
   }
   if (server.hasArg("mode")) {
     data = server.arg("mode"); // Atur status mode
-    EEPROM.write(ADDR_MODE, data.toInt());
+    EEPROM.put(ADDR_MODE, data.toInt());
     EEPROM.commit();
+    delay(500);
     data = "mode=" + data;
     kirimDataKeClient(data);
     getData(data);
     server.send(200, "text/plain","OK");// (stateBuzzer) ? "Suara Diaktifkan" : "Suara Dimatikan");
-    delay(500);
+    //delay(500);
     ESP.restart();
   }
    if (server.hasArg("PLAY")) {//
@@ -262,13 +262,16 @@ void handleSetTime() {
     server.send(200, "text/plain","OK");// (stateBuzzer) ? "Suara Diaktifkan" : "Suara Dimatikan");
   }
   if (server.hasArg("status")) {
+    data = server.arg("status");
+    data = "status=" + data;
+    getData(data);
     server.send(200, "text/plain", "CONNECTED");
+    
   }
  
   if (server.hasArg("newPassword")) {
       data = server.arg("newPassword");
       data = "newPassword=" + data;
-      //Serial.println(data);
       getData(data);
       server.send(200, "text/plain","OK");// "Password WiFi diupdate");
     } 
@@ -293,13 +296,16 @@ void ONLINE() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(otaSsid, otaPass);
 
-  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    //Serial.println("OTA WiFi gagal. Rebooting...");
-    delay(5000);
-    ESP.restart();
+  unsigned long start = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
+    delay(500);
+    Serial.print(".");
   }
 
-  ArduinoOTA.setHostname(otaHost);
+if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nWiFi Connected!");
+    
+    ArduinoOTA.setHostname(otaHost);
  
   ArduinoOTA.onEnd([]() {
     Serial.println("restart=1");
@@ -308,7 +314,12 @@ void ONLINE() {
   });
   
   ArduinoOTA.begin();
-  //Serial.println("OTA Ready");
+  Serial.println("OTA Ready");
+}else {
+    Serial.println("\nFailed to connect. Restarting...");
+    delay(2000);
+    ESP.restart();
+  }
 }
 
 void kirimDataKeClient(String data) {
@@ -347,10 +358,10 @@ int getIntPart(String &s, int &pos) {
 void setup() {
   Serial.begin(9600);
   EEPROM.begin(EEPROM_SIZE);
-  modeOTA = EEPROM.read(ADDR_MODE);
-
+  EEPROM.get(ADDR_MODE,modeOTA);
+  
   if (modeOTA) {
-    EEPROM.write(ADDR_MODE, 0);
+    EEPROM.put(ADDR_MODE, 0);
     EEPROM.commit();
     ONLINE();
   } else {

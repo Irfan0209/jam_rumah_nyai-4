@@ -14,8 +14,8 @@ const char * const namaBulanHijriah[] PROGMEM = {
 
 //================= tampilan animasi ==================//
 
-void runAnimasiJam(){
-  
+void runAnimasiJam1(){
+  if(adzan) return;
   RtcDateTime now = Rtc.GetDateTime();
   static int    y=0;
   static bool    s; // 0=in, 1=out              
@@ -35,14 +35,44 @@ void runAnimasiJam(){
   
    if(y ==9 and flagAnim == true) {s=1;}
 
-   if (y == 0 and s==1) {y=0; s=0; flagAnim = false; show = ANIM_SHOLAT;}
+   if (y == 0 and s==1) {y=0; s=0; flagAnim = false; counterName==1?show = ANIM_TEXT2:show = ANIM_TEXT;}
   
-  fType(0); 
-  dwCtr(0,y-9, buff_jam); 
+    fType(0); 
+    dwCtr(0,y-9, buff_jam); 
+  
+}
+
+void runAnimasiJam2(){
+  if(adzan) return;
+  RtcDateTime now = Rtc.GetDateTime();
+  static int    y=0;
+  static bool    s; // 0=in, 1=out              
+  static uint32_t   lsRn;
+  uint32_t          Tmr = millis();
+  uint8_t dot    = now.Second();
+  char buff_jam[20];
+  
+  if(dot & 1){sprintf(buff_jam,"%02d:%02d",now.Hour(),now.Minute());}
+  else{sprintf(buff_jam,"%02d %02d",now.Hour(),now.Minute());}
+  
+  if((Tmr-lsRn)>75) 
+      { 
+        if(s==0 and y<9 ){lsRn=Tmr;y++; }
+        if(s==1 and y>0){lsRn=Tmr;y--; if(y == 1){ Disp.drawText(0,0, "          "); }}
+      }
+  
+   if(y ==9 and flagAnim == true) {s=1;}
+
+   if (y == 0 and s==1) {y=0; s=0; counterName = 0; flagAnim = false; show = ANIM_SHOLAT;}
+  
+    fType(0); 
+    dwCtr(0,18-y, buff_jam); 
+    Disp.drawLine(0,17-y,32,17-y,0);
 
 }
 
 void drawDate(){
+  if(adzan) return;
   static uint16_t x;
   static uint16_t fullScroll = 0;
   RtcDateTime now = Rtc.GetDateTime();
@@ -69,57 +99,18 @@ void drawDate(){
   
   if (x >= fullScroll) {
     x = 0;
-    show = ANIM_TEXT;
+    show = ANIM_TEXT1;
   }
+ }
 }
 
-}
-/*
-void runningTextInfo() {
+void runningTextInfo1() {
+  if(adzan) return;
   static uint16_t x = 0;
   static uint32_t lsRn;
   uint32_t Tmr = millis();
   uint8_t Speed = speedText1;
   
-//  char msg_buffer[50]; // Pastikan cukup besar untuk teks
-//  strcpy_P(msg_buffer, msg1); // Ambil teks dari Flash
-  String msg_buffer = text;
-  // Hitung panjang teks hanya sekali
-  static uint16_t fullScroll = 0;
-  if (fullScroll == 0) { 
-    fullScroll = Disp.textWidth(msg_buffer) + Disp.width() + 250;
-  }
-
-  // Jalankan animasi scrolling berdasarkan millis()
-  if (Tmr - lsRn > Speed && flagAnim == false) { 
-    lsRn = Tmr;
-    fType(0);
-    
-    int posX = Disp.width() - x;
-    if (posX < -Disp.textWidth(msg_buffer)) { // Cegah teks keluar layar
-      x = 0;
-      flagAnim = true;
-      fullScroll=0;
-      Disp.clear();
-      return;
-    }
-
-    Disp.drawText(posX, 9, msg_buffer);
-    x++; // Geser teks ke kiri
-  }
-}*/
-
-
-void runningTextInfo() {
-  static uint16_t x = 0;
-  static uint32_t lsRn;
-  uint32_t Tmr = millis();
-  uint8_t Speed = speedText1;
-  
-//  char msg_buffer[50]; // Pastikan cukup besar untuk teks
-//  strcpy_P(msg_buffer, msg1); // Ambil teks dari Flash
-  //String msg_buffer = text;
-  // Hitung panjang teks hanya sekali
   static uint16_t fullScroll = 0;
   if (fullScroll == 0) { 
     fullScroll = Disp.textWidth(text1) + Disp.width() + 250;
@@ -144,11 +135,67 @@ void runningTextInfo() {
   }
 }
 
+void runningTextInfo2() {
+  if(adzan) return;
+  static uint16_t x = 0;
+  static uint32_t lsRn;
+  uint32_t Tmr = millis();
+  uint8_t Speed = speedText2;
+  
+  static uint16_t fullScroll = 0;
+  if (fullScroll == 0) { 
+    fullScroll = Disp.textWidth(text2) + Disp.width() + 250;
+  }
+
+  // Jalankan animasi scrolling berdasarkan millis()
+  if (Tmr - lsRn > Speed && flagAnim == false) { 
+    lsRn = Tmr;
+    fType(0);
+    
+    int posX = Disp.width() - x;
+    if (posX < -Disp.textWidth(text2)) { // Cegah teks keluar layar
+      x = 0;
+      flagAnim = true;
+      fullScroll=0;
+      Disp.clear();
+      counterName=1;
+      return;
+    }
+
+    Disp.drawText(posX, 0, text2);
+    x++; // Geser teks ke kiri
+  }
+}
+
+void scrollText(){
+  if(adzan) return;
+  
+   static uint16_t x;
+  static uint16_t fullScroll = 0;
+  static uint32_t   lsRn;
+  uint32_t          Tmr = millis();
+  uint8_t Speed = speedText2;
+  //char buff_date[]="MASJID AL MA ANY TANJUNGSARI";
+
+  fType(4);
+  if (fullScroll == 0) { // Hitung hanya sekali
+    fullScroll = Disp.textWidth(text2) + Disp.width();
+  }
+
+ if (Tmr - lsRn > Speed) { 
+  lsRn = Tmr;
+  if (x < fullScroll) {++x; }
+  else {x = 0; counterName = 1; show=ANIM_SHOLAT; return;}
+ 
+    //Marquee    jam yang tampil di bawah
+  Disp.drawText(Disp.width() - x, 0, text2); //runing teks diatas
+}
+}
 //======================= end ==========================//
 
 //==================== tampilkan jadwal sholat ====================//
 void animasiJadwalSholat(){
- 
+  if(adzan) return;
   RtcDateTime now = Rtc.GetDateTime();
   static int        y=0;
   static int        x=0;
@@ -234,6 +281,7 @@ void drawAzzan()
     
     if ((Tmr - lsRn) > 1500 && (ct > limit))
     {
+        adzan = 0;
         show = ANIM_JAM;
         Disp.clear();
         ct = 0;

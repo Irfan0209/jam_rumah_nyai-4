@@ -35,16 +35,12 @@ void check() {
                 lastList = 0;
                 show = ANIM_ADZAN;
                 adzanFlag[counter] = true;
-              }
-                
+              }       
             }
         }
-
         if (jam != hours || menit != minutes) {
             adzanFlag[counter] = false;
         }
-        
-        
         counter = (counter + 1) % 5;
     }
 
@@ -58,7 +54,6 @@ void check() {
        if (i < 4) jwsData += "|";
      }
      Serial.println(jwsData); // Dikirim ke Serial Monitor
-     
      stateSendSholat = false; 
      cekList = 0;
     }
