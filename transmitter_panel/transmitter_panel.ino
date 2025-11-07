@@ -4,16 +4,29 @@
 #include <WebSocketsServer.h>
 #include <ESP_EEPROM.h>
 #include <ArduinoOTA.h>
+#include <ESP8266mDNS.h>
+#include <WiFiUdp.h>
 
 #define EEPROM_SIZE 100
 #define ADDR_MODE        0
+#define ADDR_PASSWORD    50
+#define ADDR_SSID        1
+
+//////////////////////////
+char newSSID[32];
+char newPASS[32];
+
+bool ssidReceived = false;
+bool passReceived = false;
+bool waitingWiFiInfo = true;
+////////////////////////////
 
 char ssid[20]     = "JAM_PANEL";
 char password[20] = "00000000";
 
 const char* otaSsid = "KELUARGA02";
 const char* otaPass = "khusnul23";
-const char* otaHost = "SERVER_5";
+const char* otaHost = "SERVER_2";
 
 ESP8266WebServer server(80);
 WebSocketsServer webSocket(81);
@@ -175,7 +188,7 @@ void handleSetTime() {
   }
   if (server.hasArg("CoHi")) {
     data = server.arg("CoHi"); // Atur latitude    data = "CoHi=" + data;
-    data = "CoHi=" + data;
+
     //Serial.println(data);
     getData(data);
     server.send(200, "text/plain", "OK");//"coreksi hijriah diupdate");
@@ -190,14 +203,13 @@ void handleSetTime() {
   }
   if (server.hasArg("mode")) {
     data = server.arg("mode"); // Atur status mode
-    EEPROM.put(ADDR_MODE, data.toInt());
+    EEPROM.write(ADDR_MODE, data.toInt());
     EEPROM.commit();
-    delay(500);
     data = "mode=" + data;
     kirimDataKeClient(data);
     getData(data);
     server.send(200, "text/plain","OK");// (stateBuzzer) ? "Suara Diaktifkan" : "Suara Dimatikan");
-    //delay(500);
+    delay(500);
     ESP.restart();
   }
    if (server.hasArg("PLAY")) {//
@@ -262,16 +274,13 @@ void handleSetTime() {
     server.send(200, "text/plain","OK");// (stateBuzzer) ? "Suara Diaktifkan" : "Suara Dimatikan");
   }
   if (server.hasArg("status")) {
-    data = server.arg("status");
-    data = "status=" + data;
-    getData(data);
     server.send(200, "text/plain", "CONNECTED");
-    
   }
  
   if (server.hasArg("newPassword")) {
       data = server.arg("newPassword");
       data = "newPassword=" + data;
+      //Serial.println(data);
       getData(data);
       server.send(200, "text/plain","OK");// "Password WiFi diupdate");
     } 
@@ -290,11 +299,50 @@ void AP_init() {
   server.begin();
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
+
+   // (Opsional) baca data tersimpan
+  char savedSSID[30];
+  char savedPASS[30];
+  int data = EEPROM.read(ADDR_MODE);
+  EEPROM.get(ADDR_SSID, savedSSID);
+  EEPROM.get(ADDR_PASSWORD, savedPASS);
+  
+  Serial.println("data:" + String(data));
+  Serial.println("SSID:" + String(savedSSID));
+  Serial.println("PASS:" + String(savedPASS));
 }
 
-void ONLINE() {
+/*void ONLINE() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(otaSsid, otaPass);
+
+  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    //Serial.println("OTA WiFi gagal. Rebooting...");
+    delay(5000);
+    ESP.restart();
+  }
+
+  ArduinoOTA.setHostname(otaHost);
+ 
+  ArduinoOTA.onEnd([]() {
+    Serial.println("restart=1");
+    EEPROM.write(ADDR_MODE, 0);
+    EEPROM.commit();
+    delay(1000);
+    ESP.restart();
+  });
+  
+  ArduinoOTA.begin();
+  //Serial.println("OTA Ready");
+}*/
+
+// ======== ONLINE MODE (OTA / WIFI NORMAL) ========
+void ONLINE(const char* wifiSSID, const char* wifiPASS) {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(wifiSSID, wifiPASS);
+
+  Serial.print("Connecting to ");
+  Serial.println(wifiSSID);
 
   unsigned long start = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
@@ -302,20 +350,23 @@ void ONLINE() {
     Serial.print(".");
   }
 
-if (WiFi.status() == WL_CONNECTED) {
+  if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\nWiFi Connected!");
-    
+    ArduinoOTA.begin();
     ArduinoOTA.setHostname(otaHost);
  
-  ArduinoOTA.onEnd([]() {
+    ArduinoOTA.onEnd([]() {
+    
     Serial.println("restart=1");
+//    EEPROM.write(ADDR_MODE, 1);
+//    EEPROM.commit();
     delay(1000);
     ESP.restart();
   });
   
-  ArduinoOTA.begin();
-  Serial.println("OTA Ready");
-}else {
+  
+  waitingWiFiInfo=false;
+  } else {
     Serial.println("\nFailed to connect. Restarting...");
     delay(2000);
     ESP.restart();
@@ -339,6 +390,31 @@ void cekSerialMonitor() {
     input.trim();
     //Serial.print("[Serial] Kirim ke semua client: ");
     //Serial.println(input);
+    if (input.startsWith("WIFI_SSID:")) {
+      input.remove(0, 10);
+      input.toCharArray(newSSID, sizeof(newSSID));
+      ssidReceived = true;
+      Serial.println("[Receiver] SSID diterima: " + String(newSSID));
+    }
+    else if (input.startsWith("WIFI_PASS:")) {
+      input.remove(0, 10);
+      input.toCharArray(newPASS, sizeof(newPASS));
+      passReceived = true;
+      Serial.println("[Receiver] Password diterima: " + String(newPASS));
+    }
+
+    // Jika sudah lengkap dua-duanya
+    if (ssidReceived && passReceived) {
+      Serial.println("[Receiver] Menyimpan SSID & Password...");
+//      EEPROM.put(ADDR_SSID, newSSID);
+//      EEPROM.put(ADDR_PASSWORD, newPASS);
+//      EEPROM.write(ADDR_MODE, 0);
+//      EEPROM.commit();
+      waitingWiFiInfo=false;
+      Serial.println("[Receiver] Reconnecting ke WiFi baru...");
+      ONLINE(newSSID, newPASS);
+    }
+    
     for (uint8_t i = 0; i < 5; i++) {
       if (clientReady[i] && webSocket.clientIsConnected(i)) {
         webSocket.sendTXT(i, input);
@@ -358,19 +434,25 @@ int getIntPart(String &s, int &pos) {
 void setup() {
   Serial.begin(9600);
   EEPROM.begin(EEPROM_SIZE);
-  EEPROM.get(ADDR_MODE,modeOTA);
+  //waitingWiFiInfo = EEPROM.read(ADDR_MODE);
+  //Serial.println("waitingWiFiInfo:"+String(waitingWiFiInfo));
+
+  AP_init();
+  waitingWiFiInfo = true;
   
-  if (modeOTA) {
-    EEPROM.put(ADDR_MODE, 0);
-    EEPROM.commit();
-    ONLINE();
-  } else {
-    AP_init();
-  }
+//  EEPROM.write(ADDR_MODE, 1);
+//  EEPROM.commit();
+  //if (waitingWiFiInfo) {
+    //AP_init();
+//  } else {
+//    ONLINE(newSSID, newPASS);
+//  }
+//  AP_init();
+//  waitingWiFiInfo = true;
 }
 
 void loop() {
-  if (modeOTA) {
+  /*if (modeOTA) {
     ArduinoOTA.handle();
     if (Serial.available()) {
       String input = Serial.readStringUntil('\n');
@@ -384,5 +466,27 @@ void loop() {
     server.handleClient();
     webSocket.loop();
     cekSerialMonitor();
+  }*/
+ if (waitingWiFiInfo==1) {
+    server.handleClient();
+    webSocket.loop();
+    cekSerialMonitor();  // pantau data dari sender
+  } else if(waitingWiFiInfo==0) {
+    ArduinoOTA.handle();
+    Serial.println("waitingWiFiInfo:"+String(waitingWiFiInfo));
+    //Serial.println("WIFI:" + WiFi.status());
+    if (Serial.available()) {
+      String input = Serial.readStringUntil('\n');
+      input.trim();
+      if (input.equalsIgnoreCase("restart")) {
+//        EEPROM.write(ADDR_MODE, 1);
+//        EEPROM.commit();
+        delay(1000);
+        ESP.restart();
+      }
+    }
   }
+  //
+
+  
 }
